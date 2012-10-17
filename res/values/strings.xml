@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="hello">Hello World!!!!!!</string>
+    <string name="app_name">Grandma</string>
+    <string name="welcome_slogan">For Delicacy!</string>
+    
+    <string name="sync">Sync List</string>
+    <string name="export">Export Friends</string>
+    <string name="prefs">Preferences</string>
+    <string name="prefs_filename">SampleAppPrefs</string>
+
+    <!--  Settings Names -->
+    <string name="setting_user_agent">SampleAppPrefs</string>
+    
+    <!--  Preferences Key Names -->
+    <string name="prefs_assetname_friendslist_key">PrefsAssetNameFriendsList</string>
+    <string name="prefs_assetname_picture_key">PrefsAssetNamePicture</string>
+    <string name="prefs_autodelete_key">PrefsAutoDelete</string>
+
+</resources>

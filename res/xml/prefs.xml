@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<PreferenceScreen
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/prefs_screen"
+        android:key="preferencescreen"
+    >
+    <PreferenceCategory android:title="Assets">
+        <EditTextPreference 
+            android:key="@string/prefs_assetname_friendslist_key"
+            android:title="Friends List" 
+            android:summary="Please enter filename"
+            android:defaultValue="friends.txt"
+        />
+        <EditTextPreference 
+            android:key="@string/prefs_assetname_picture_key"
+            android:title="Picture" 
+            android:summary="Please enter filename"
+            android:defaultValue="pict2.jpg"
+        />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="Auto Settings">
+        <CheckBoxPreference
+            android:key="@string/prefs_autodelete_key"
+            android:title="Delete at Startup" 
+            android:summary="Check to clear at startup"
+            android:defaultValue="false"
+        />
+    </PreferenceCategory>
+</PreferenceScreen>

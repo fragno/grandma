@@ -1,0 +1,58 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item 
+    	android:id="@+id/menu_prefs" 
+    	android:title="Preferences" 
+   	/>
+
+    <item 
+    	android:id="@+id/menu_loadfromassets"
+    	android:title="Load from Assets"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_exportinternal"
+    	android:title="Export to Internal"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_exportexternal"
+    	android:title="Export to External"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_exportdb"
+    	android:title="Export to DB"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_loadfrominternalstore"
+    	android:title="Load from Internal Store"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_loadfromexternalstore"
+    	android:title="Load from External Store"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_loadfromdb"
+    	android:title="Load from DB"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_clearinternalstore" 
+    	android:title="Clear Local Internal"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_clearexternalstore" 
+    	android:title="Clear Local External"
+   	/>
+
+    <item 
+    	android:id="@+id/menu_cleardb" 
+    	android:title="Clear DB"
+   	/>
+
+</menu>
