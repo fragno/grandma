@@ -1,14 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout 
-	xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="fill_parent"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
     android:layout_height="?android:attr/listPreferredItemHeight"
-    android:padding="6dip"
-	>
-     <TextView
-         android:id="@+id/rowtext_top"
-         android:layout_width="wrap_content"
-         android:layout_height="wrap_content"
-         android:gravity="center_vertical"
-     />
-</LinearLayout>
+    android:orientation="horizontal"
+    android:padding="6dip" >
+
+    <ImageView
+        android:id="@+id/imageView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/icon" />
+
+    <TextView
+        android:id="@+id/rowtext_bottom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/imageView1"
+        android:layout_toRightOf="@+id/imageView1"
+        android:text="rowtext_bottom" />
+
+    <TextView
+        android:id="@+id/rowtext_top"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/rowtext_bottom"
+        android:layout_alignLeft="@+id/rowtext_bottom"
+        android:text="rowtext_top" />
+
+    <CheckBox
+        android:id="@+id/checkBox2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBottom="@+id/rowtext_bottom"
+        android:layout_alignParentRight="true" />
+
+</RelativeLayout>

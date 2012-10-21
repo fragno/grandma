@@ -1,18 +1,16 @@
 package com.grandma;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Iterator;
 
+import org.apache.http.util.EncodingUtils;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import android.R.string;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -22,7 +20,6 @@ import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
-import android.os.Environment;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -42,9 +39,12 @@ import android.widget.TextView;
 public class MainActivity extends Activity {
     static private Context appContext;
     private final ArrayList<Friend> friends = new ArrayList<Friend>();
+    private final ArrayList<GrandmaMenuItem> grandmaMenuItems = new ArrayList<GrandmaMenuItem>();
     private FriendsArrayAdapter friendsArrayAdapter;
+    private GrandmaMenuItemArrayAdapter grandmaMenuItemArrayAdapter;
     private ListView listView;
     private DBHelper dbHelper;
+	
 
     /**
      * Called when the activity is first created.
@@ -60,16 +60,22 @@ public class MainActivity extends Activity {
         friendsArrayAdapter = new FriendsArrayAdapter(this, R.layout.rowlayout, friends);
         listView.setAdapter(friendsArrayAdapter);
 
+        
+        // Set the ListView Adapter that is loaded when selecting "Sync" menu
+        listView = (ListView)findViewById(R.id.friendsview);
+        grandmaMenuItemArrayAdapter = new GrandmaMenuItemArrayAdapter(this, R.layout.rowlayout, grandmaMenuItems);
+        listView.setAdapter(grandmaMenuItemArrayAdapter);        
+        
         // If auto sync preference is true, dispatch a sync task
         boolean isAutoDelete = prefsGetAutoDelete();
         if (isAutoDelete) {
             // Clear all data including settings
             String fname = prefsGetFilename();
             String pname = prefsGetPictureName();
-            deleteInternalStoragePrivate(fname);
-            deleteInternalStoragePrivate(pname);
-            deleteExternalStoragePublicFile(fname);
-            deleteExternalStoragePublicFile(pname);
+            ExternalStorage.deleteExternalStoragePublicFile(this.getPackageName(), fname);
+            ExternalStorage.deleteExternalStoragePublicFile(this.getPackageName(),	fname);
+            ExternalStorage.deleteInternalStoragePrivate(appContext, fname);
+            ExternalStorage.deleteInternalStoragePrivate(appContext, pname);            
             dbHelper.clearAll();
         }
 
@@ -124,31 +130,43 @@ public class MainActivity extends Activity {
                     public void run() {
                         try {
                             // Get list from the assets directory.
-                            //  In real life this would be fetch from the web.
+                            // In real life this would be fetch from the web.
                             String fname = prefsGetFilename();
+                        	byte[] buffer = getAsset(fname);
                             if (fname != null && fname.length() > 0) {
-                                byte[] buffer = getAsset(fname);
-                                // Parse the JSON file
-                                String friendslist = new String(buffer);
-                                final JSONObject json = new JSONObject(friendslist);
-                                JSONArray d = json.getJSONArray("data");
-                                int l = d.length();
-                                for (int i=0; i<l; i++) {
-                                    JSONObject o = d.getJSONObject(i);
-                                    String n = o.getString("name");
-                                    String id = o.getString("id");
-                                    Friend f = new Friend();
-                                    f.id = id;
-                                    f.name = n;
-                                    friends.add(f);
-                                }
+                                if (fname.equals("menu.txt")) {
+        							// Parse the JSON file
+                                	String menuList = new String(buffer);
+                                	menuList = EncodingUtils.getString(menuList.getBytes(), "utf-8");
+                                	final JSONObject json = new JSONObject(menuList);         
+                                	JSONArray jsonArrayOutside = json.getJSONArray("data");                                	
+                                	int l = jsonArrayOutside.length();
+                                	for (int i1 = 0; i1 < l; i1++) {
+        								JSONObject jsonObject = jsonArrayOutside.getJSONObject(i1);
+        								Iterator keyIter = jsonObject.keys();
+        								while(keyIter.hasNext()) {
+        									String key = (String) keyIter.next();
+        									JSONArray jsonArrayInside = jsonObject.getJSONArray(key);
+        									int lengthInside = jsonArrayInside.length();
+        									for(int i2 = 0; i2 < lengthInside; i2++) {
+        										JSONObject o = jsonArrayInside.getJSONObject(i2);
+        										String name = o.getString("name");
+        										String price = o.getString("price");        										
+        										GrandmaMenuItem gmi = new GrandmaMenuItem();
+        										gmi.price = price;
+        										gmi.name = name;
+        										grandmaMenuItems.add(gmi);
+        									}
+        								}
+        							}
+        						}
 
                                 // Only the original owner thread can touch its views
                                 MainActivity.this.runOnUiThread(new Runnable() {
                                     public void run() {
-                                        friendsArrayAdapter = new FriendsArrayAdapter(MainActivity.this, R.layout.rowlayout, friends);
-                                        listView.setAdapter(friendsArrayAdapter);
-                                        friendsArrayAdapter.notifyDataSetChanged();
+                                        grandmaMenuItemArrayAdapter = new GrandmaMenuItemArrayAdapter(MainActivity.this, R.layout.rowlayout, grandmaMenuItems);
+                                        listView.setAdapter(grandmaMenuItemArrayAdapter);
+                                        grandmaMenuItemArrayAdapter.notifyDataSetChanged();
 
                                         // Get image from assets. In real life this would go to the web
                                         String pname = prefsGetPictureName();
@@ -179,11 +197,14 @@ public class MainActivity extends Activity {
                 byte[] buffer;
                 fname = prefsGetFilename();
                 buffer = getAsset(fname);
-                writeInternalStoragePrivate(fname, buffer);
+                
+                //////writeInternalStoragePrivate(fname, buffer);
+                ExternalStorage.writeInternalStoragePrivate(appContext, fname, buffer);             
                 //
                 pname = prefsGetPictureName();
                 buffer = getAsset(pname);
-                writeInternalStoragePrivate(pname, buffer);
+                //////writeInternalStoragePrivate(pname, buffer);
+                ExternalStorage.writeInternalStoragePrivate(appContext, pname, buffer);
                 break;
 
 
@@ -195,32 +216,33 @@ public class MainActivity extends Activity {
                 byte[] buffer2;
                 fname = prefsGetFilename();
                 buffer2 = getAsset(fname);
-                writeToExternalStoragePublic(fname, buffer2);
-                //writeToExternalStoragePrivate(fname, buffer2);
+                
+                //////writeToExternalStoragePublic(fname, buffer2);
+                ExternalStorage.writeToExternalStoragePublic(this.getPackageName(), fname, buffer2);
 
                 //
                 pname = prefsGetPictureName();
                 buffer2 = getAsset(pname);
-                writeToExternalStoragePublic(pname, buffer2);
-                //writeToExternalStoragePrivate(pname, buffer2);
+                //////writeToExternalStoragePublic(pname, buffer2);
+                ExternalStorage.writeToExternalStoragePublic(this.getPackageName(), pname, buffer2);
                 break;
 
             // Case: Export to DB
             case R.id.menu_exportdb:
                 try {
-                    fname = prefsGetFilename();
+                    fname = prefsGetFilename();                    
                     if (fname != null && fname.length() > 0) {
-                        buffer = getAsset(fname);
-                        // Parse the JSON file
-                        String friendslist = new String(buffer);
-                        final JSONObject json = new JSONObject(friendslist);
-                        JSONArray d = json.getJSONArray("data");
-                        int l = d.length();
-                        for (int i2=0; i2<l; i2++) {
-                            JSONObject o = d.getJSONObject(i2);
-                            String n = o.getString("name");
-                            String id = o.getString("id");
-                            dbHelper.insert(id, n);
+                        buffer = getAsset(fname);                    	
+                       	// Parse the JSON file
+                       	String friendslist = new String(buffer);
+                       	final JSONObject json = new JSONObject(friendslist);
+                       	JSONArray d = json.getJSONArray("data");
+                       	int l = d.length();
+                       	for (int i2=0; i2<l; i2++) {
+                        		JSONObject o = d.getJSONObject(i2);
+                        		String n = o.getString("name");
+                        		String id = o.getString("id");
+                        		dbHelper.insert(id, n);
                         }
                         // Only the original owner thread can touch its views
                         MainActivity.this.runOnUiThread(new Runnable() {
@@ -245,7 +267,8 @@ public class MainActivity extends Activity {
                             // load picture from internal memory
                             String fname = prefsGetFilename();
                             if (fname != null && fname.length() > 0) {
-                                byte[] buffer = readInternalStoragePrivate(fname);
+                                //////byte[] buffer = readInternalStoragePrivate(fname);
+                                byte[] buffer = ExternalStorage.readInternalStoragePrivate(appContext, fname);
                                 // Parse the JSON file
                                 String friendslist = new String(buffer);
                                 final JSONObject json = new JSONObject(friendslist);
@@ -267,7 +290,8 @@ public class MainActivity extends Activity {
                                         // Get image from assets. In real life this would go to the web
                                         String pname = prefsGetPictureName();
                                         if (pname != null && pname.length() > 0) {
-                                            byte[] buffer = readInternalStoragePrivate(pname);
+                                            //////byte[] buffer = readInternalStoragePrivate(pname);
+                                            byte[] buffer = ExternalStorage.readInternalStoragePrivate(appContext, pname);
                                             Bitmap bm = BitmapFactory.decodeByteArray(buffer, 0, buffer.length);
                                             ImageView imageView = (ImageView) findViewById(R.id.avatarview);
                                             imageView.setImageBitmap(bm);
@@ -314,8 +338,10 @@ public class MainActivity extends Activity {
             case R.id.menu_clearinternalstore:
                 fname = prefsGetFilename();
                 pname = prefsGetPictureName();
-                deleteInternalStoragePrivate(fname);
-                deleteInternalStoragePrivate(pname);
+                //////deleteInternalStoragePrivate(fname);
+                ExternalStorage.deleteInternalStoragePrivate(appContext, fname);
+                //////deleteInternalStoragePrivate(pname);
+                ExternalStorage.deleteInternalStoragePrivate(appContext, pname);
 
                 // Only the original owner thread can touch its views
                 MainActivity.this.runOnUiThread(new Runnable() {
@@ -334,10 +360,10 @@ public class MainActivity extends Activity {
             case R.id.menu_clearexternalstore:
                 fname = prefsGetFilename();
                 pname = prefsGetPictureName();
-                //deleteExternalStoragePrivateFile(fname);
-                deleteExternalStoragePublicFile(fname);
-                //deleteExternalStoragePrivateFile(pname);
-                deleteExternalStoragePublicFile(pname);
+                //////deleteExternalStoragePublicFile(fname);
+                ExternalStorage.deleteExternalStoragePublicFile(this.getPackageName(), fname);
+                //////deleteExternalStoragePublicFile(pname);
+                ExternalStorage.deleteExternalStoragePublicFile(this.getPackageName(), pname);
                 //
 
                 // Only the original owner thread can touch its views
@@ -366,318 +392,43 @@ public class MainActivity extends Activity {
         return true;
     }
 
-    //////////////////////////////////////////////////////////////////
-    // External Storage APIs /////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////
-
-    /**
-     * Helper Method to Test if external Storage is Available
-     */
-    public boolean isExternalStorageAvailable() {
-        boolean state = false;
-        String extStorageState = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED.equals(extStorageState)) {
-            state = true;
-        }
-        return state;
-    }
-
-    /**
-     * Helper Method to Test if external Storage is read only
-     */
-    public boolean isExternalStorageReadOnly() {
-        boolean state = false;
-        String extStorageState = Environment.getExternalStorageState();
-        if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(extStorageState)) {
-            state = true;
-        }
-        return state;
-    }
-
-    ////////////////////////////////////////
-
-    /**
-     * Write to external public directory
-     * @param filename - the filename to write to
-     * @param content - the content to write
-     */
-    public void writeToExternalStoragePublic(String filename, byte[] content) {
-
-        // API Level 7 or lower, use getExternalStorageDirectory()
-        //  to open a File that represents the root of the external storage, but
-        // writing to root is not recommended, and instead app should write to
-        // app-specific directory, as shown below.
-
-        String packageName = this.getPackageName();
-        String path = "/Android/data/" + packageName + "/files/";
-
-        if (isExternalStorageAvailable() && !isExternalStorageReadOnly()) {
-            try {
-                //File root = Environment.getExternalStorageDirectory();
-                //File file = new File(root, filename); // avoid writing to root
-                File file = new File(path, filename); // instead write /Android/data...
-                file.mkdirs();
-                FileOutputStream fos = new FileOutputStream(file);
-                fos.write(content);
-                fos.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-    }
-
-
-    /**
-     * Reads a file from internal storage
-     * @param filename - the filename to read from
-     * @return the file contents
-     */
-    public byte[] readExternallStoragePublic(String filename) {
-        int len = 1024;
-        byte[] buffer = new byte[len];
-        String packageName = this.getPackageName();
-        String path = "/Android/data/" + packageName + "/files/";
-
-        if (!isExternalStorageReadOnly()) {
-            try {
-                File file = new File(path, filename); // instead write /Android/data...
-                FileInputStream fis = new FileInputStream(file);
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                int nrb = fis.read(buffer, 0, len); // read up to len bytes
-                while (nrb != -1) {
-                    baos.write(buffer, 0, nrb);
-                    nrb = fis.read(buffer, 0, len);
-                }
-                buffer = baos.toByteArray();
-                fis.close();
-            } catch (FileNotFoundException e) {
-                Log.d(appContext.getString(R.string.app_name)+".readInternalStorage()",
-                        "FileNotFoundException: " + e);
-                e.printStackTrace();
-            } catch (IOException e) {
-                Log.d(appContext.getString(R.string.app_name)+".readInternalStorage()",
-                        "IOException: " + e);
-                e.printStackTrace();
-            }
-        }
-
-        return buffer;
-    }
-
-
-    /**
-     * Delete external public file
-     * @param filename - the filename to write to
-     */
-    void deleteExternalStoragePublicFile(String filename) {
-        String packageName = this.getPackageName();
-        String path = "/Android/data/" + packageName + "/files/"+filename;
-        File file = new File(path, filename); // instead write /Android/data...
-        if (file != null) {
-            file.delete();
-        }
-    }
-
-
-    /**
-     * Write to external storage using the latest Level 8 APIs.
-     * @param filename - the filename to write to
-     * @param content - the content to write
-     */
-    public void writeToExternalStoragePrivate(String filename, byte[] content) {
-        if (!isExternalStorageReadOnly()) {
-            try {
-            	String packageName = this.getPackageName();
-            	String path = "/Android/data/" + packageName + "/files/"; 
-                File file = new File(path, filename);
-                FileOutputStream fos = new FileOutputStream(file);
-                fos.write(content);
-                fos.close();
-            } catch (FileNotFoundException e) {
-                e.printStackTrace();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    //////////////////////////
-
-    /**
-     * Reads a file from internal storage
-     * @param filename - the file to read from
-     * @return the content of the file
-     */
-    public byte[] readExternallStoragePrivate_APILevel8(String filename) {
-        int len = 1024;
-        byte[] buffer = new byte[len];
-        if (!isExternalStorageReadOnly()) {
-            try {
-            	String packageName = this.getPackageName();
-            	String path = "/Android/data/" + packageName + "/files/"; 
-                File file = new File(path, filename);
-                FileInputStream fis = new FileInputStream(file);
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                int nrb = fis.read(buffer, 0, len); // read up to len bytes
-                while (nrb != -1) {
-                    baos.write(buffer, 0, nrb);
-                    nrb = fis.read(buffer, 0, len);
-                }
-                buffer = baos.toByteArray();
-                fis.close();
-            } catch (FileNotFoundException e) {
-                Log.d(appContext.getString(R.string.app_name)+".readInternalStorage()",
-                        "FileNotFoundException: " + e);
-                e.printStackTrace();
-            } catch (IOException e) {
-                Log.d(appContext.getString(R.string.app_name)+".readInternalStorage()",
-                        "IOException: " + e);
-                e.printStackTrace();
-            }
-        }
-        return buffer;
-    }
-
-    /**
-     * Delete external private file
-     * @param filename - the filename to delete
-     */
-    void deleteExternalStoragePrivateFile_APILevel8(String filename) {
-    	String packageName = this.getPackageName();
-    	String path = "/Android/data/" + packageName + "/files/"; 
-        File file = new File(path, filename);
-        if (file != null) {
-            file.delete();
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // Read/write Internal Storage////////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Writes content to internal storage making the content private to the
-     * application. The method can be easily changed to take the MODE as
-     * argument and let the caller dictate the visibility: MODE_PRIVATE,
-     * MODE_WORLD_WRITEABLE, MODE_WORLD_READABLE, etc.
-     *
-     * @param filename - the name of the file to create
-     * @param content - the content to write
-     */
-    public void writeInternalStoragePrivate(String filename, byte[] content) {
-        try {
-            //MODE_PRIVATE creates the file (or replaces a file of same name) and makes
-            //  it private to your application. Other modes:
-            //    MODE_WORLD_WRITEABLE
-            //    MODE_WORLD_READABLE
-            //    MODE_APPEND -  if the file already exists then will write to end of file vs. of erasing it.
-            FileOutputStream fos = openFileOutput(filename, Context.MODE_PRIVATE);
-            fos.write(content);
-            fos.close();
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    ////////////////////////////////////////
-
-    /**
-     * Reads a file from internal storage
-     * @param filename the file to read from
-     * @return the file content
-     */
-    public byte[] readInternalStoragePrivate(String filename) {
-        int len = 1024;
-        byte[] buffer = new byte[len];
-        try {
-            FileInputStream fis = openFileInput(filename);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            int nrb = fis.read(buffer, 0, len); // read up to len bytes
-            while (nrb != -1) {
-                baos.write(buffer, 0, nrb);
-                nrb = fis.read(buffer, 0, len);
-            }
-            buffer = baos.toByteArray();
-            fis.close();
-        } catch (FileNotFoundException e) {
-            Log.d(appContext.getString(R.string.app_name)+".readInternalStorage()",
-                    "FileNotFoundException: " + e);
-            e.printStackTrace();
-        } catch (IOException e) {
-            Log.d(appContext.getString(R.string.app_name)+".readInternalStorage()",
-                    "IOException: " + e);
-            e.printStackTrace();
-        }
-        return buffer;
-    }
-
-    /**
-     * Delete internal private file
-     * @param filename - the filename to delete
-     */
-    public void deleteInternalStoragePrivate(String filename) {
-        File file = getFileStreamPath(filename);
-        if (file != null) {
-            file.delete();
-        }
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // Get Internal Cache Directory //////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Helper method to retrieve the absolute path to the application specific
-     * internal cache directory on the filesystem. These files will be ones that
-     * get deleted when the app is uninstalled or when the device runs low on
-     * storage. There is no guarantee when these files will be deleted.
-     *
-     * Note: This uses a Level 8+ API.
-     *
-     * @return the the absolute path to the application specific cache directory
-     */
-    public String getInternalCacheDirectory() {
-        String cacheDirPath = null;
-        File cacheDir = getCacheDir();
-        if (cacheDir != null) {
-            cacheDirPath = cacheDir.getPath();
-        }
-        return cacheDirPath;
-    }
-
-    //////////////////////////////////////////////////////////////////////////
-    // Get External Cache Directory //////////////////////////////////////////
-    //////////////////////////////////////////////////////////////////////////
-
-    /**
-     * Helper method to retrieve the absolute path to the application specific
-     * external cache directory on the filesystem. These files will be ones that
-     * get deleted when the app is uninstalled or when the device runs low on
-     * storage. There is no guarantee when these files will be deleted.
-     *
-     * Note: This uses a Level 8+ API.
-     *
-     * @return the the absolute path to the application specific cache directory
-     */
-    public String getExternalCacheDirectory() {
-        String extCacheDirPath = null;
-        //File cacheDir = getExternalCacheDir();       
-        String packageName = this.getPackageName();
-    	String path = "/Android/data/" + packageName + "/cache/"; 
-        File cacheDir = new File(path);
-        if (cacheDir != null) {
-            extCacheDirPath = cacheDir.getPath();
-        }
-        return extCacheDirPath;
-    }
-
+   
     ///////////////////////////////////////////////////////////////////
 
+    private void parseJSONFile() {
+    	try {
+    		String fname = prefsGetFilename();
+    		byte[] buffer = getAsset(fname);
+    		if(fname != null && fname.length() > 0) {
+    			String menuList = new String(buffer);
+    			final JSONObject json = new JSONObject(menuList);         
+    			JSONArray jsonArrayOutside = json.getJSONArray("data");                                	
+    			int l = jsonArrayOutside.length();
+    			for (int i1 = 0; i1 < l; i1++) {
+    				JSONObject jsonObject = jsonArrayOutside.getJSONObject(i1);
+    				Iterator keyIter = jsonObject.keys();
+    				while(keyIter.hasNext()) {
+    					String key = (String) keyIter.next();
+    					JSONArray jsonArrayInside = jsonObject.getJSONArray(key);
+    					int lengthInside = jsonArrayInside.length();
+						for(int i2 = 0; i2 < lengthInside; i2++) {
+							JSONObject o = jsonArrayInside.getJSONObject(i2);
+							String name = o.getString("name");
+							String price = o.getString("price");        										
+							GrandmaMenuItem gmi = new GrandmaMenuItem();
+							gmi.price = price;
+							gmi.name = name;
+							grandmaMenuItems.add(gmi);
+						}	
+    				}
+    			}
+    		}
+    	} catch (Exception e) {
+    		// TODO: handle exception
+    		Log.d(appContext.getString(R.string.app_name), "Exception: " + e);
+    	}    	
+    }
+    
     /**
      * Get contents of named asset
      * @param name the name of the asset
@@ -741,6 +492,8 @@ public class MainActivity extends Activity {
             Friend f = friends.get(position);
             TextView rowTxt = (TextView) rowView.findViewById(R.id.rowtext_top);
             rowTxt.setText(f.name);
+            rowTxt = (TextView) rowView.findViewById(R.id.rowtext_bottom);
+            rowTxt.setText(f.id);
             return rowView;
         }
 
