@@ -6,10 +6,10 @@
     >
     <PreferenceCategory android:title="Assets">
         <EditTextPreference 
-            android:key="@string/prefs_assetname_friendslist_key"
-            android:title="Friends List" 
+            android:key="@string/prefs_assetname_menulist_key"
+            android:title="Menu List" 
             android:summary="Please enter filename"
-            android:defaultValue="friends.txt"
+            android:defaultValue="menu.txt"
         />
         <EditTextPreference 
             android:key="@string/prefs_assetname_picture_key"

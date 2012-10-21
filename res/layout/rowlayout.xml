@@ -6,7 +6,7 @@
     android:padding="6dip" >
 
     <ImageView
-        android:id="@+id/imageView1"
+        android:id="@+id/dish_logo"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:src="@drawable/icon" />
@@ -28,7 +28,7 @@
         android:text="rowtext_top" />
 
     <CheckBox
-        android:id="@+id/checkBox2"
+        android:id="@+id/choose_or_not"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignBottom="@+id/rowtext_bottom"

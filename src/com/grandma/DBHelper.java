@@ -10,16 +10,16 @@ import android.database.sqlite.SQLiteOpenHelper;
 public class DBHelper extends SQLiteOpenHelper {
 	private SQLiteDatabase db;
 	private static final int DATABASE_VERSION = 1;
-	private static final String DB_NAME = "sample.db";
-	private static final String TABLE_NAME = "friends";
+	private static final String DB_NAME = "grandma.db";
+	private static final String TABLE_NAME = "menu";
 
 	/**
 	 * Constructor
 	 * @param context the application context
 	 */
 	public DBHelper(Context context) {
-	    super(context, DB_NAME, null, DATABASE_VERSION);
-	    db = getWritableDatabase();
+		super(context, DB_NAME, null, DATABASE_VERSION);
+		db = this.getWritableDatabase();
 	}
 
 	/**
@@ -31,18 +31,18 @@ public class DBHelper extends SQLiteOpenHelper {
 	public void onCreate(SQLiteDatabase db) {
 	    db.execSQL(
 	            "create table " + TABLE_NAME + " (_id integer primary key autoincrement, " +
-	            " fid text not null, name text not null) ");
+	            " name text not null, price text not null) ");
 	}
 
 	/**
 	 * The Insert DB statement
-	 * @param id the friends id to insert
-	 * @param name the friend's name to insert
+	 * @param name the name of the dish to insert
+	 * @param price the dish's price to insert
 	 */
-	public void insert(String id, String name) {
-	    db.execSQL("INSERT INTO friends('fid', 'name') values ('"
-	            + id + "', '"
-	            + name + "')");
+	public void insert(String name, String price) {
+	    db.execSQL("INSERT INTO " + TABLE_NAME + "('name', 'price') values ('"
+	            + name + "', '"
+	            + price + "')");
 	}
 
 	/**
@@ -59,7 +59,7 @@ public class DBHelper extends SQLiteOpenHelper {
 	public Cursor cursorSelectAll() {
 	    Cursor cursor = this.db.query(
 	            TABLE_NAME, // Table Name
-	            new String[] { "fid", "name" }, // Columns to return
+	            new String[] { "name", "price" }, // Columns to return
 	            null,       // SQL WHERE
 	            null,       // Selection Args
 	            null,       // SQL GROUP BY
@@ -70,23 +70,23 @@ public class DBHelper extends SQLiteOpenHelper {
 
 	/**
 	 * Select All that returns an ArrayList
-	 * @return the ArrayList for the DB selection
+	 * @return the ArrayList for the DB Selection
 	 */
-	public ArrayList<Friend> listSelectAll() {
-	    ArrayList<Friend> list = new ArrayList<Friend>();
-	    Cursor cursor = this.db.query(TABLE_NAME, new String[] { "fid", "name" }, null, null, null, null, "name");
-	    if (cursor.moveToFirst()) {
-	        do {
-	            Friend f = new Friend();
-	            f.id = cursor.getString(0);
-	            f.name = cursor.getString(1);
-	            list.add(f);
-	        } while (cursor.moveToNext());
-	    }
-	    if (cursor != null && !cursor.isClosed()) {
-	        cursor.close();
-	    }
-	    return list;
+	public ArrayList<GrandmaMenuItem> listSelectAll() {
+		ArrayList<GrandmaMenuItem> list = new ArrayList<GrandmaMenuItem>();
+		Cursor cursor = this.db.query(TABLE_NAME, new String[] {"name", "price"}, null, null, null, null, "name");
+		if(cursor.moveToFirst()) {
+			do {
+				GrandmaMenuItem gmi = new GrandmaMenuItem();
+				gmi.name = cursor.getString(0);
+				gmi.price = cursor.getString(1);
+				list.add(gmi);
+			} while (cursor.moveToNext());
+		}
+		if (cursor != null && !cursor.isClosed()) {
+			cursor.close();
+		}
+		return list;
 	}
 
 	/**

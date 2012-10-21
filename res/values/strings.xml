@@ -14,7 +14,7 @@
     <string name="setting_user_agent">SampleAppPrefs</string>
     
     <!--  Preferences Key Names -->
-    <string name="prefs_assetname_friendslist_key">PrefsAssetNameFriendsList</string>
+    <string name="prefs_assetname_menulist_key">PrefsAssetNameMenuList</string>
     <string name="prefs_assetname_picture_key">PrefsAssetNamePicture</string>
     <string name="prefs_autodelete_key">PrefsAutoDelete</string>
 

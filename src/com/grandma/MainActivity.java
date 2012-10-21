@@ -38,9 +38,7 @@ import android.widget.TextView;
  */
 public class MainActivity extends Activity {
     static private Context appContext;
-    private final ArrayList<Friend> friends = new ArrayList<Friend>();
     private final ArrayList<GrandmaMenuItem> grandmaMenuItems = new ArrayList<GrandmaMenuItem>();
-    private FriendsArrayAdapter friendsArrayAdapter;
     private GrandmaMenuItemArrayAdapter grandmaMenuItemArrayAdapter;
     private ListView listView;
     private DBHelper dbHelper;
@@ -54,15 +52,9 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         appContext = this;
         setContentView(R.layout.main);
-
-        // Setup the ListView Adapter that is loaded when selecting "Sync" menu
-        listView = (ListView) findViewById(R.id.friendsview);
-        friendsArrayAdapter = new FriendsArrayAdapter(this, R.layout.rowlayout, friends);
-        listView.setAdapter(friendsArrayAdapter);
-
         
         // Set the ListView Adapter that is loaded when selecting "Sync" menu
-        listView = (ListView)findViewById(R.id.friendsview);
+        listView = (ListView)findViewById(R.id.menulistview);
         grandmaMenuItemArrayAdapter = new GrandmaMenuItemArrayAdapter(this, R.layout.rowlayout, grandmaMenuItems);
         listView.setAdapter(grandmaMenuItemArrayAdapter);        
         
@@ -81,7 +73,7 @@ public class MainActivity extends Activity {
 
         dbHelper = new DBHelper(this);
 
-    } // onCreate()
+    } 
 
     ///////////////////////////////////////////////////////////////////
 
@@ -114,7 +106,6 @@ public class MainActivity extends Activity {
     public boolean onOptionsItemSelected(MenuItem item) {
         String fname=null, pname=null;
         switch (item.getItemId()) {
-
             // Case: Bring up the Preferences Screen
             case R.id.menu_prefs: // Preferences
                 // Launch the Preference Activity
@@ -124,7 +115,7 @@ public class MainActivity extends Activity {
 
             // Case: Load from Assets
             case R.id.menu_loadfromassets:
-                // Get the Friend's list
+                // Get the menu list
                 new Thread() {
                     @Override
                     public void run() {
@@ -136,29 +127,7 @@ public class MainActivity extends Activity {
                             if (fname != null && fname.length() > 0) {
                                 if (fname.equals("menu.txt")) {
         							// Parse the JSON file
-                                	String menuList = new String(buffer);
-                                	menuList = EncodingUtils.getString(menuList.getBytes(), "utf-8");
-                                	final JSONObject json = new JSONObject(menuList);         
-                                	JSONArray jsonArrayOutside = json.getJSONArray("data");                                	
-                                	int l = jsonArrayOutside.length();
-                                	for (int i1 = 0; i1 < l; i1++) {
-        								JSONObject jsonObject = jsonArrayOutside.getJSONObject(i1);
-        								Iterator keyIter = jsonObject.keys();
-        								while(keyIter.hasNext()) {
-        									String key = (String) keyIter.next();
-        									JSONArray jsonArrayInside = jsonObject.getJSONArray(key);
-        									int lengthInside = jsonArrayInside.length();
-        									for(int i2 = 0; i2 < lengthInside; i2++) {
-        										JSONObject o = jsonArrayInside.getJSONObject(i2);
-        										String name = o.getString("name");
-        										String price = o.getString("price");        										
-        										GrandmaMenuItem gmi = new GrandmaMenuItem();
-        										gmi.price = price;
-        										gmi.name = name;
-        										grandmaMenuItems.add(gmi);
-        									}
-        								}
-        							}
+                                	parseJSONFile(fname, buffer);
         						}
 
                                 // Only the original owner thread can touch its views
@@ -173,7 +142,7 @@ public class MainActivity extends Activity {
                                         if (pname != null && pname.length() > 0) {
                                             byte[] buffer = getAsset(pname);
                                             Bitmap bm = BitmapFactory.decodeByteArray(buffer, 0, buffer.length);
-                                            ImageView imageView = (ImageView) findViewById(R.id.avatarview);
+                                            ImageView imageView = (ImageView) findViewById(R.id.logoview);
                                             imageView.setImageBitmap(bm);
                                         }
                                     }
@@ -196,14 +165,11 @@ public class MainActivity extends Activity {
                 /////////////////////////////////////////
                 byte[] buffer;
                 fname = prefsGetFilename();
-                buffer = getAsset(fname);
-                
-                //////writeInternalStoragePrivate(fname, buffer);
+                buffer = getAsset(fname);               
                 ExternalStorage.writeInternalStoragePrivate(appContext, fname, buffer);             
                 //
                 pname = prefsGetPictureName();
                 buffer = getAsset(pname);
-                //////writeInternalStoragePrivate(pname, buffer);
                 ExternalStorage.writeInternalStoragePrivate(appContext, pname, buffer);
                 break;
 
@@ -215,15 +181,11 @@ public class MainActivity extends Activity {
                 /////////////////////////////////////////
                 byte[] buffer2;
                 fname = prefsGetFilename();
-                buffer2 = getAsset(fname);
-                
-                //////writeToExternalStoragePublic(fname, buffer2);
+                buffer2 = getAsset(fname);              
                 ExternalStorage.writeToExternalStoragePublic(this.getPackageName(), fname, buffer2);
-
                 //
                 pname = prefsGetPictureName();
                 buffer2 = getAsset(pname);
-                //////writeToExternalStoragePublic(pname, buffer2);
                 ExternalStorage.writeToExternalStoragePublic(this.getPackageName(), pname, buffer2);
                 break;
 
@@ -234,20 +196,15 @@ public class MainActivity extends Activity {
                     if (fname != null && fname.length() > 0) {
                         buffer = getAsset(fname);                    	
                        	// Parse the JSON file
-                       	String friendslist = new String(buffer);
-                       	final JSONObject json = new JSONObject(friendslist);
-                       	JSONArray d = json.getJSONArray("data");
-                       	int l = d.length();
-                       	for (int i2=0; i2<l; i2++) {
-                        		JSONObject o = d.getJSONObject(i2);
-                        		String n = o.getString("name");
-                        		String id = o.getString("id");
-                        		dbHelper.insert(id, n);
-                        }
+                       	parseJSONFile(fname, buffer);
+                       	for (GrandmaMenuItem gmi : grandmaMenuItems) {
+							dbHelper.insert(gmi.price, gmi.name);
+						}
+                       	
                         // Only the original owner thread can touch its views
                         MainActivity.this.runOnUiThread(new Runnable() {
                             public void run() {
-                                friendsArrayAdapter.notifyDataSetChanged();
+                                grandmaMenuItemArrayAdapter.notifyDataSetChanged();
                             }
                         });
                     } else {
@@ -258,7 +215,7 @@ public class MainActivity extends Activity {
                 }
                 break;
 
-            /* Case: Load from Internal Store */
+            // Case: Load from Internal Store 
             case R.id.menu_loadfrominternalstore:
                 new Thread() {
                     @Override
@@ -267,33 +224,19 @@ public class MainActivity extends Activity {
                             // load picture from internal memory
                             String fname = prefsGetFilename();
                             if (fname != null && fname.length() > 0) {
-                                //////byte[] buffer = readInternalStoragePrivate(fname);
                                 byte[] buffer = ExternalStorage.readInternalStoragePrivate(appContext, fname);
                                 // Parse the JSON file
-                                String friendslist = new String(buffer);
-                                final JSONObject json = new JSONObject(friendslist);
-                                JSONArray d = json.getJSONArray("data");
-                                int l = d.length();
-                                for (int i=0; i<l; i++) {
-                                    JSONObject o = d.getJSONObject(i);
-                                    String n = o.getString("name");
-                                    String id = o.getString("id");
-                                    Friend f = new Friend();
-                                    f.id = id;
-                                    f.name = n;
-                                    friends.add(f);
-                                }
+                                parseJSONFile(fname, buffer);                                
                                 // Only the original owner thread can touch its views
                                 MainActivity.this.runOnUiThread(new Runnable() {
                                     public void run() {
-                                        friendsArrayAdapter.notifyDataSetChanged();
+                                        grandmaMenuItemArrayAdapter.notifyDataSetChanged();
                                         // Get image from assets. In real life this would go to the web
                                         String pname = prefsGetPictureName();
                                         if (pname != null && pname.length() > 0) {
-                                            //////byte[] buffer = readInternalStoragePrivate(pname);
                                             byte[] buffer = ExternalStorage.readInternalStoragePrivate(appContext, pname);
                                             Bitmap bm = BitmapFactory.decodeByteArray(buffer, 0, buffer.length);
-                                            ImageView imageView = (ImageView) findViewById(R.id.avatarview);
+                                            ImageView imageView = (ImageView) findViewById(R.id.logoview);
                                             imageView.setImageBitmap(bm);
                                         }
                                     }
@@ -315,15 +258,15 @@ public class MainActivity extends Activity {
                     @Override
                     public void run() {
                         try {
-                            // load picture from DB
-                            final ArrayList<Friend> dbFriends = dbHelper.listSelectAll();
-                            if (dbFriends != null) {
+                            // load all data from DB
+                            final ArrayList<GrandmaMenuItem> dbGrandmaMenuItems = dbHelper.listSelectAll();
+                            if (dbGrandmaMenuItems != null) {
                                 // Only the original owner thread can touch its views
                                 MainActivity.this.runOnUiThread(new Runnable() {
                                     public void run() {
-                                        friendsArrayAdapter = new FriendsArrayAdapter(MainActivity.this, R.layout.rowlayout, dbFriends);
-                                        listView.setAdapter(friendsArrayAdapter);
-                                        friendsArrayAdapter.notifyDataSetChanged();
+                                    	grandmaMenuItemArrayAdapter = new GrandmaMenuItemArrayAdapter(MainActivity.this, R.layout.rowlayout, dbGrandmaMenuItems);
+                                    	listView.setAdapter(grandmaMenuItemArrayAdapter);
+                                    	grandmaMenuItemArrayAdapter.notifyDataSetChanged();
                                     }
                                 });
                             }
@@ -338,20 +281,18 @@ public class MainActivity extends Activity {
             case R.id.menu_clearinternalstore:
                 fname = prefsGetFilename();
                 pname = prefsGetPictureName();
-                //////deleteInternalStoragePrivate(fname);
                 ExternalStorage.deleteInternalStoragePrivate(appContext, fname);
-                //////deleteInternalStoragePrivate(pname);
                 ExternalStorage.deleteInternalStoragePrivate(appContext, pname);
 
                 // Only the original owner thread can touch its views
                 MainActivity.this.runOnUiThread(new Runnable() {
                     public void run() {
                         // Notify the attached View that the underlying data has been changed
-                        //  and it should refresh itself.
+                        // and it should refresh itself.
                         if (listView != null) {
-                            friends.clear();
+                            grandmaMenuItems.clear();
                         }
-                        friendsArrayAdapter.notifyDataSetChanged();
+                        grandmaMenuItemArrayAdapter.notifyDataSetChanged();
                     }
                 });
                 break;
@@ -360,21 +301,18 @@ public class MainActivity extends Activity {
             case R.id.menu_clearexternalstore:
                 fname = prefsGetFilename();
                 pname = prefsGetPictureName();
-                //////deleteExternalStoragePublicFile(fname);
                 ExternalStorage.deleteExternalStoragePublicFile(this.getPackageName(), fname);
-                //////deleteExternalStoragePublicFile(pname);
                 ExternalStorage.deleteExternalStoragePublicFile(this.getPackageName(), pname);
                 //
-
                 // Only the original owner thread can touch its views
                 MainActivity.this.runOnUiThread(new Runnable() {
                     public void run() {
                         // Notify the attached View that the underlying data has been changed
-                        //  and it should refresh itself.
+                        // and it should refresh itself.
                         if (listView != null) {
-                            friends.clear();
+                            grandmaMenuItems.clear();
                         }
-                        friendsArrayAdapter.notifyDataSetChanged();
+                        grandmaMenuItemArrayAdapter.notifyDataSetChanged();
                     }
                 });
                 break;
@@ -395,33 +333,32 @@ public class MainActivity extends Activity {
    
     ///////////////////////////////////////////////////////////////////
 
-    private void parseJSONFile() {
+    /**
+     * Get Menulist from the assets directory
+     */
+    private void parseJSONFile(String fname, byte[] buffer) {
     	try {
-    		String fname = prefsGetFilename();
-    		byte[] buffer = getAsset(fname);
-    		if(fname != null && fname.length() > 0) {
-    			String menuList = new String(buffer);
-    			final JSONObject json = new JSONObject(menuList);         
-    			JSONArray jsonArrayOutside = json.getJSONArray("data");                                	
-    			int l = jsonArrayOutside.length();
-    			for (int i1 = 0; i1 < l; i1++) {
-    				JSONObject jsonObject = jsonArrayOutside.getJSONObject(i1);
-    				Iterator keyIter = jsonObject.keys();
-    				while(keyIter.hasNext()) {
-    					String key = (String) keyIter.next();
-    					JSONArray jsonArrayInside = jsonObject.getJSONArray(key);
-    					int lengthInside = jsonArrayInside.length();
-						for(int i2 = 0; i2 < lengthInside; i2++) {
-							JSONObject o = jsonArrayInside.getJSONObject(i2);
-							String name = o.getString("name");
-							String price = o.getString("price");        										
-							GrandmaMenuItem gmi = new GrandmaMenuItem();
-							gmi.price = price;
-							gmi.name = name;
-							grandmaMenuItems.add(gmi);
-						}	
-    				}
-    			}
+			String menuList = new String(buffer);
+			final JSONObject json = new JSONObject(menuList);
+			JSONArray jsonArrayOutside = json.getJSONArray("data");
+			int l = jsonArrayOutside.length();
+			for (int i1 = 0; i1 < l; i1++) {
+				JSONObject jsonObject = jsonArrayOutside.getJSONObject(i1);
+				Iterator keyIter = jsonObject.keys();
+				while (keyIter.hasNext()) {
+					String key = (String) keyIter.next();
+					JSONArray jsonArrayInside = jsonObject.getJSONArray(key);
+					int lengthInside = jsonArrayInside.length();
+					for (int i2 = 0; i2 < lengthInside; i2++) {
+						JSONObject o = jsonArrayInside.getJSONObject(i2);
+						String name = o.getString("name");
+						String price = o.getString("price");
+						GrandmaMenuItem gmi = new GrandmaMenuItem();
+						gmi.price = price;
+						gmi.name = name;					
+						grandmaMenuItems.add(gmi);
+					}
+				}
     		}
     	} catch (Exception e) {
     		// TODO: handle exception
@@ -538,7 +475,7 @@ public class MainActivity extends Activity {
     public String prefsGetFilename() {
         String v = null;
         SharedPreferences sprefs = PreferenceManager.getDefaultSharedPreferences(appContext);
-        String key = appContext.getString(R.string.prefs_assetname_friendslist_key);
+        String key = appContext.getString(R.string.prefs_assetname_menulist_key);
         try {
             v = sprefs.getString(key, null);
         } catch (ClassCastException e) {
@@ -554,7 +491,7 @@ public class MainActivity extends Activity {
     public void  prefsSetFilename(String v) {
         SharedPreferences sprefs = PreferenceManager.getDefaultSharedPreferences(appContext);
         Editor e = sprefs.edit();
-        String key = appContext.getString(R.string.prefs_assetname_friendslist_key);
+        String key = appContext.getString(R.string.prefs_assetname_menulist_key);
         e.putString(key, v);
         e.commit();
     }

@@ -8,7 +8,7 @@
 		android:gravity="right"
     >
 	<ImageView 
-        android:id="@+id/avatarview"
+        android:id="@+id/logoview"
 		android:src="@drawable/icon" 
 		android:layout_height="wrap_content" 
 		android:layout_width="wrap_content"
@@ -18,7 +18,7 @@
 		android:layout_marginLeft="0px"
 	/>
 	<ListView  
-		android:id="@+id/friendsview"
+		android:id="@+id/menulistview"
 		android:layout_width="fill_parent" 
 		android:layout_height="wrap_content"
 		android:textFilterEnabled="true" 
